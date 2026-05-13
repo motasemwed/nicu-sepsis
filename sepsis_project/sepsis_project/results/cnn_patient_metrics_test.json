@@ -1,0 +1,11 @@
+{
+    "level": "patient",
+    "total_patients": 66,
+    "sepsis": 22,
+    "normal": 44,
+    "detected": 22,
+    "missed": 0,
+    "false_alarm": 7,
+    "sensitivity": 1.0,
+    "specificity": 0.8409090909090909
+}

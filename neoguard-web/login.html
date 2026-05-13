@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeoGuard AI - Staff Gateway</title>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Premium Ambient Background -->
+    <div class="app-bg"></div>
+    <div class="bg-grid"></div>
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+
+    <div class="login-screen">
+        <div class="login-panel glass-elevated">
+            <div class="bio-scanner">
+                <i class="ph-fill ph-fingerprint"></i>
+            </div>
+            
+            <h1>NeoGuard <span style="color:var(--primary-bright)">AI</span></h1>
+            <p>Secure Medical Gateway</p>
+
+            <form class="auth-form" id="login-form">
+                <div class="input-group">
+                    <label>Medical License / ID</label>
+                    <input type="text" id="staff-id" placeholder="DR-40291" autocomplete="off" required>
+                    <i class="ph ph-identification-card"></i>
+                </div>
+                
+                <div class="input-group">
+                    <label>Security Pin</label>
+                    <input type="password" id="staff-pin" placeholder="••••••" required>
+                    <i class="ph ph-lock-key"></i>
+                </div>
+
+                <button type="submit" class="btn-scan">
+                    Establish Secure Link <i class="ph-bold ph-arrow-right"></i>
+                </button>
+
+                <div class="auth-error" id="error-msg">
+                    <i class="ph-bold ph-warning-circle"></i> INVALID CREDENTIALS_
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('.btn-scan');
+            const originalText = btn.innerHTML;
+            
+            // Visual loading state
+            btn.innerHTML = `<i class="ph ph-spinner-gap ph-spin"></i> Authenticating...`;
+            
+            setTimeout(() => {
+                const staffId = document.getElementById('staff-id').value;
+                const pin = document.getElementById('staff-pin').value;
+
+                if (staffId && pin) {
+                    window.location.href = 'index.html';
+                } else {
+                    document.getElementById('error-msg').style.display = 'block';
+                    btn.innerHTML = originalText;
+                }
+            }, 800); // add slight synthetic delay for premium feel
+        });
+    </script>
+</body>
+</html>

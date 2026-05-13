@@ -1,0 +1,18 @@
+{
+    "level": "patient",
+    "dataset": "Test",
+    "total_patients": 66,
+    "sepsis": 22,
+    "normal": 44,
+    "sensitivity": 1.0,
+    "specificity": 1.0,
+    "ppv": 1.0,
+    "npv": 1.0,
+    "f1": 1.0,
+    "f2": 1.0,
+    "tp": 22,
+    "tn": 44,
+    "fp": 0,
+    "fn": 0,
+    "mean_detection_rate": 0.5023454545454545
+}

@@ -1,0 +1,6 @@
+{
+    "best_threshold": 0.388,
+    "best_f2": 0.5722627180093882,
+    "metric": "F2-score",
+    "selected_on": "validation set"
+}

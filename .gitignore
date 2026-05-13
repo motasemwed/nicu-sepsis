@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data files
+data/
+eda_outputs/
+new data (ensemble building)/
+
+# Virtual environments في أي مكان
+sepsis_env/
+sepsis_project/sepsis_project/sepsis_env/
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# VS Code
+.vscode/

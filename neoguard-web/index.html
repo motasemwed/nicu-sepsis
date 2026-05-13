@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeoGuard AI - Command Center</title>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <canvas id="ecg-bg"></canvas>
+    <div class="app-bg"></div>
+    <div class="bg-grid"></div>
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+
+    <!-- Golden Hour Overlay Modal -->
+    <div class="modal-overlay" id="gh-modal">
+        <div class="gh-modal glass">
+            <div class="gh-header">
+                <h2><i class="ph-bold ph-warning-octagon"></i> GOLDEN HOUR PROTOCOL</h2>
+                <button class="btn-close-modal" onclick="closeGoldenHour()"><i class="ph-bold ph-x"></i></button>
+            </div>
+            <div class="gh-body">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 2rem;">
+                    <div>
+                        <div style="font-size:1.2rem; font-weight:600; margin-bottom:0.25rem;" id="gh-patient-name">Baby
+                            L. Garcia</div>
+                        <div style="color:var(--text-muted); font-size:0.9rem;">Sepsis Risk Likelihood: <span
+                                style="color:var(--alert-bright); font-weight:700;">88%</span></div>
+                    </div>
+                    <div class="gh-timer" id="gh-timer">59:59</div>
+                </div>
+
+                <div class="checklist" id="gh-checklist">
+                    <div class="checklist-item" onclick="toggleCheck(this)">
+                        <div class="check-circle"><i class="ph-bold ph-check"></i></div>
+                        <div class="checklist-text">Stat Blood Cultures Drawn</div>
+                    </div>
+                    <div class="checklist-item" onclick="toggleCheck(this)">
+                        <div class="check-circle"><i class="ph-bold ph-check"></i></div>
+                        <div class="checklist-text">Administer Ampicillin & Gentamicin</div>
+                    </div>
+                    <div class="checklist-item" onclick="toggleCheck(this)">
+                        <div class="check-circle"><i class="ph-bold ph-check"></i></div>
+                        <div class="checklist-text">Bolus Normal Saline 10mL/kg IV</div>
+                    </div>
+                    <div class="checklist-item" onclick="toggleCheck(this)">
+                        <div class="check-circle"><i class="ph-bold ph-check"></i></div>
+                        <div class="checklist-text">Check Baseline Lactate</div>
+                    </div>
+                </div>
+            </div>
+            <div style="padding: 1rem 2rem 2rem 2rem;">
+                <button class="btn-generate"
+                    style="width:100%; justify-content:center; background:linear-gradient(135deg, var(--alert), var(--alert-bright)); color:#fff;"
+                    onclick="closeGoldenHour()">
+                    <i class="ph-bold ph-shield-check"></i> PROTOCOL COMPLETE
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ AI Results Modal ═══ -->
+    <div class="modal-overlay" id="ai-results-modal">
+        <div class="ai-results-panel glass" id="ai-results-panel">
+
+            <!-- Header -->
+            <div class="air-header">
+                <div class="air-header-left">
+                    <div class="brand-icon" style="width:40px;height:40px;font-size:1.2rem;">
+                        <i class="ph-bold ph-brain"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;">LSTM Sepsis Analysis</div>
+                        <div style="font-size:1.1rem;font-weight:700;" id="air-patient-name">Patient Report</div>
+                    </div>
+                </div>
+                <button class="btn-close-modal" onclick="closeResultsModal()"><i class="ph-bold ph-x"></i></button>
+            </div>
+
+            <div class="air-body">
+
+                <!-- Left Panel: Gauge + Explanation -->
+                <div class="air-left">
+
+                    <!-- Risk Gauge -->
+                    <div class="risk-gauge-container">
+                        <svg class="risk-gauge-svg" viewBox="0 0 200 120">
+                            <!-- Background arc -->
+                            <path d="M 20 110 A 90 90 0 0 1 180 110" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="16" stroke-linecap="round"/>
+                            <!-- Risk arc (dynamic) -->
+                            <path id="gauge-arc" d="M 20 110 A 90 90 0 0 1 180 110" fill="none" stroke="#10b981" stroke-width="16" stroke-linecap="round" stroke-dasharray="283" stroke-dashoffset="283"/>
+                            <!-- Needle -->
+                            <line id="gauge-needle" x1="100" y1="110" x2="100" y2="30" stroke="white" stroke-width="2.5" stroke-linecap="round" transform-origin="100 110"/>
+                            <circle cx="100" cy="110" r="5" fill="white"/>
+                        </svg>
+                        <div class="gauge-value" id="air-risk-pct">--</div>
+                        <div class="gauge-label" id="air-risk-label">Analyzing…</div>
+                        <div class="gauge-sublabel">Sepsis Risk Score</div>
+                    </div>
+
+                    <!-- Explanation Box -->
+                    <div class="air-explanation" id="air-explanation">
+                        <i class="ph-fill ph-info" style="color:var(--primary-bright);margin-right:0.5rem;"></i>
+                        <span>Awaiting analysis…</span>
+                    </div>
+
+                    <!-- Digital Twin Simulator -->
+                    <div class="air-twin" id="air-twin">
+                        <div class="air-section-title"><i class="ph-fill ph-sliders"></i> Digital Twin (What-If Analysis)</div>
+                        <div class="twin-controls">
+                            <div class="twin-slider-group">
+                                <label>Heart Rate (bpm) <span id="twin-hr-val" style="color:var(--primary-bright); font-family:var(--font-mono)">120</span></label>
+                                <input type="range" id="twin-hr" min="80" max="220" step="1" value="120" oninput="document.getElementById('twin-hr-val').textContent=this.value; simulateTwin()">
+                            </div>
+                            <div class="twin-slider-group">
+                                <label>SpO₂ (%) <span id="twin-spo2-val" style="color:var(--primary-bright); font-family:var(--font-mono)">95</span></label>
+                                <input type="range" id="twin-spo2" min="60" max="100" step="1" value="95" oninput="document.getElementById('twin-spo2-val').textContent=this.value; simulateTwin()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recommendations -->
+                    <div class="air-recommendations" id="air-recs">
+                        <div class="air-section-title"><i class="ph-fill ph-stethoscope"></i> Clinical Recommendations</div>
+                        <ul class="rec-list" id="rec-list"></ul>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Feature Attribution & Journey -->
+                <div class="air-right">
+                    <div class="air-section-title"><i class="ph-fill ph-chart-bar"></i> Feature Attribution Analysis</div>
+                    <div class="air-feat-subtitle">Direction and magnitude of each feature's influence on this prediction</div>
+                    <div class="feat-bars-container" id="feat-bars-container"></div>
+                    
+                    <div class="air-journey" style="margin-top: 1.5rem; flex-grow: 1; display: flex; flex-direction: column;">
+                        <div class="air-section-title"><i class="ph-fill ph-trend-up"></i> Longitudinal Patient Journey</div>
+                        <div class="air-feat-subtitle">Risk trajectory over the past 8 hours leading to this assessment</div>
+                        <div style="flex-grow: 1; min-height: 120px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; margin-top: 0.5rem; position: relative;">
+                            <canvas id="journey-chart" style="width: 100%; height: 100%; display: block;"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <div class="air-footer">
+                <div style="font-size:0.78rem; color:var(--text-muted);">
+                    <i class="ph-fill ph-warning" style="color:#f59e0b;"></i>
+                    AI output is decision-support only. Clinical judgment overrides all predictions.
+                </div>
+                <div style="display:flex; gap: 1rem;">
+                    <button class="btn-generate btn-export-pdf" style="padding:0.6rem 1.2rem; font-size:0.9rem; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#fff;" onclick="downloadAnalysisPDF()">
+                        <i class="ph-bold ph-download-simple"></i> Export PDF
+                    </button>
+                    <button class="btn-generate" style="padding:0.6rem 1.5rem; font-size:0.9rem;" onclick="closeResultsModal()">
+                        <i class="ph-bold ph-check"></i> Acknowledge
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-icon"><i class="ph-bold ph-heartbeat"></i></div>
+                <div class="brand-text">
+                    <h2>NeoGuard <span class="highlight">AI</span></h2>
+                    <p>NICU Core</p>
+                </div>
+            </div>
+
+            <div class="nav-label">Core Systems</div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-target="dashboard-hub">
+                    <i class="ph-fill ph-squares-four"></i><span>Command Hub</span>
+                </a>
+                <a href="#" class="nav-item" data-target="live-monitor">
+                    <i class="ph-fill ph-activity"></i><span>Sepsis Telemetry</span>
+                </a>
+                <a href="#" class="nav-item" data-target="ward-map">
+                    <i class="ph-fill ph-map-pin"></i><span>NICU Ward Map</span>
+                </a>
+
+                <div class="nav-label" style="margin-top: 1.5rem;">Physician Assist</div>
+                <a href="#" class="nav-item" data-target="shift-handoff">
+                    <i class="ph-fill ph-magic-wand"></i><span>Shift-Handoff AI</span>
+                </a>
+
+                <div class="nav-label" style="margin-top: 1.5rem;">AI Modules</div>
+                <a href="#" class="nav-item" data-target="ab-monitor">
+                    <i class="ph-fill ph-heart-break"></i><span>A&B Spell Monitor</span>
+                </a>
+                <a href="#" class="nav-item" data-target="npass-vision">
+                    <i class="ph-fill ph-baby"></i><span>N-PASS Pain Vision</span>
+                </a>
+                <a href="#" class="nav-item" data-target="charting-engine">
+                    <i class="ph-fill ph-files"></i><span>Auto-Charting</span>
+                </a>
+
+                <div class="nav-label" style="margin-top: 1.5rem;">Intelligence</div>
+                <a href="#" class="nav-item" data-target="model-intelligence">
+                    <i class="ph-fill ph-chart-line-up"></i><span>Model Intelligence</span>
+                </a>
+            </nav>
+        </aside>
+
+        <div class="main-wrapper">
+            <header class="top-bar">
+                <div class="header-titles">
+                    <h1 id="page-title">Command Hub</h1>
+                    <p id="page-subtitle">Centralized overview of all active machine learning modules.</p>
+                </div>
+                <div class="header-tools">
+                    <button class="btn btn-tour" id="btn-voice" onclick="toggleVoice()" style="background: rgba(139,92,246,0.15); border: 1px solid rgba(139,92,246,0.3); color: var(--purple-bright);"><i class="ph-fill ph-microphone"></i> Voice Assist</button>
+                    <button class="btn btn-tour" onclick="startTour()" style="background: rgba(14,165,233,0.15); border: 1px solid rgba(14,165,233,0.3); color: var(--primary-bright); box-shadow: 0 0 15px rgba(14,165,233,0.2);"><i class="ph-fill ph-play-circle"></i> Launch Demo</button>
+                    <div class="time-display">
+                        <div class="clock mono" id="clock">00:00:00</div>
+                        <div class="date" id="date">--/--/----</div>
+                    </div>
+                    <div class="user-badge glass">
+                        <img src="https://ui-avatars.com/api/?name=Dr+Ahmed&background=020617&color=0ea5e9&bold=true"
+                            alt="Dr">
+                    </div>
+                </div>
+            </header>
+
+            <main class="content-area">
+
+                <!-- 0. Command Hub Section -->
+                <section id="dashboard-hub" class="view-section active">
+                    <div class="hub-grid">
+                        <div class="module-card glass mod-sepsis" onclick="switchView('live-monitor')">
+                            <div class="module-icon"><i class="ph-fill ph-activity"></i></div>
+                            <h3>Sepsis Prediction Engine</h3>
+                            <p>Real-time deep learning inference using HR/SpO2 OCR extraction.</p>
+                            <div class="module-status">
+                                <div class="indicator">
+                                    <div class="dot"></div> ONLINE
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="module-card glass mod-handoff" onclick="switchView('shift-handoff')">
+                            <div class="module-icon"><i class="ph-fill ph-magic-wand"></i></div>
+                            <h3>Gen-AI Shift Handoff</h3>
+                            <p>Generates natural language clinical summaries for doctor rounds.</p>
+                            <div class="module-status">
+                                <div class="indicator">
+                                    <div class="dot"></div> ONLINE
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="module-card glass mod-ab" onclick="switchView('ab-monitor')">
+                            <div class="module-icon"><i class="ph-fill ph-heart-break"></i></div>
+                            <h3>A&B Spell Monitor</h3>
+                            <p>Predicts Apnea and Bradycardia events seconds before physiological crashes.</p>
+                            <div class="module-status">
+                                <div class="indicator">
+                                    <div class="dot"></div> ONLINE
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="module-card glass mod-npass" onclick="switchView('npass-vision')">
+                            <div class="module-icon"><i class="ph-fill ph-baby"></i></div>
+                            <h3>N-PASS Pain Vision</h3>
+                            <p>Computer vision extraction of neonatal facial distress landmarks.</p>
+                            <div class="module-status">
+                                <div class="indicator">
+                                    <div class="dot" style="animation:none"></div> TRAINING
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="module-card glass mod-chart">
+                            <div class="module-icon"><i class="ph-fill ph-files"></i></div>
+                            <h3>Automated EHR Charting</h3>
+                            <p>OCR-driven vital sign logging directly to Epic/Cerner databases.</p>
+                            <div class="module-status">
+                                <div class="indicator">
+                                    <div class="dot"></div> ONLINE
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 1. Sepsis Telemetry / Golden Hour -->
+                <section id="live-monitor" class="view-section">
+
+                    <!-- TIME SERIES UPLOAD DROPZONE -->
+                    <div class="upload-zone-wrapper glass">
+                        <div class="upload-header">
+                            <div class="brand-icon upload-pulse-icon"><i class="ph-bold ph-waveform"></i></div>
+                            <div>
+                                <h2 style="font-size: 1.25rem; font-weight: 600;">Time-Series Analysis Engine</h2>
+                                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">Upload
+                                    patient vitals sequence (.csv, .xlsx) for Deep XGBoost Sepsis Prediction</p>
+                            </div>
+                        </div>
+                        <div class="dropzone" id="file-dropzone">
+                            <input type="file" id="file-input"
+                                accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                                hidden>
+                            <div class="dz-content" id="dz-content">
+                                <div class="icon-stack">
+                                    <i class="ph-thin ph-file-csv dz-icon"></i>
+                                    <i class="ph-fill ph-plus-circle dz-add"></i>
+                                </div>
+                                <h3 style="font-size: 1.1rem; margin-bottom:0.25rem;">Drag & drop temporal sequences
+                                </h3>
+                                <p style="color: var(--text-muted); font-size: 0.95rem;">or <button class="browse-btn"
+                                        onclick="document.getElementById('file-input').click()">browse files</button> to
+                                    initiate inference</p>
+                            </div>
+
+                            <!-- Processing overlay (Hidden by default) -->
+                            <div class="dz-processing" id="dz-processing" style="display:none;">
+                                <div class="scanning-line"></div>
+                                <div style="display:flex; justify-content:center; gap: 1rem; margin-bottom: 1rem;"
+                                    class="status-nodes">
+                                    <div class="status-node active">
+                                        <div class="node-dot"></div>
+                                        <span>Parse</span>
+                                    </div>
+                                    <div class="node-connector"></div>
+                                    <div class="status-node" id="node-features">
+                                        <div class="node-dot"></div>
+                                        <span>Features</span>
+                                    </div>
+                                    <div class="node-connector"></div>
+                                    <div class="status-node" id="node-xgboost">
+                                        <div class="node-dot"></div>
+                                        <span>XGBoost</span>
+                                    </div>
+                                </div>
+                                <div class="processing-text">
+                                    <span id="process-status">Reading Time-Series Data...</span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar-fill" id="progress-bar-fill"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="patient-grid" id="patient-grid">
+                        <!-- Patient Cards (Injected via JS) -->
+                    </div>
+                </section>
+
+                <!-- NEW: Shift Handoff Gen AI -->
+                <section id="shift-handoff" class="view-section">
+                    <div class="handoff-layout">
+                        <div class="handoff-sidebar">
+                            <h3 style="margin-bottom: 1rem; color:var(--text-muted); font-size:0.9rem; text-transform:uppercase;">Select Patient</h3>
+                            <div id="handoff-patient-list">
+                                <div class="pt-select active" onclick="selectPatientHandoff(this, 'Baby A. Smith')">
+                                    <div>
+                                        <div class="pt-name">Baby A. Smith</div>
+                                        <div class="pt-id">NICU-9402</div>
+                                    </div>
+                                    <i class="ph-bold ph-caret-right"></i>
+                                </div>
+                                <div class="pt-select" onclick="selectPatientHandoff(this, 'Baby L. Garcia')">
+                                    <div>
+                                        <div class="pt-name" style="color:var(--alert-bright);">Baby L. Garcia</div>
+                                        <div class="pt-id">NICU-7729</div>
+                                    </div>
+                                    <i class="ph-bold ph-caret-right"></i>
+                                </div>
+                                <div class="pt-select" onclick="selectPatientHandoff(this, 'Baby P. Patel')">
+                                    <div>
+                                        <div class="pt-name">Baby P. Patel</div>
+                                        <div class="pt-id">NICU-5520</div>
+                                    </div>
+                                    <i class="ph-bold ph-caret-right"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="handoff-main">
+                            <div class="gen-ai-header">
+                                <div class="gen-ai-icon"><i class="ph-fill ph-sparkle"></i></div>
+                                <div>
+                                    <h2>LLM Clinical Summary Engine</h2>
+                                    <p style="color:var(--text-muted); font-size:0.9rem;">Synthesizing 12-hour telemetry
+                                        history & EHR notes.</p>
+                                </div>
+                            </div>
+
+                            <div class="summary-box glass" id="summary-box">
+                                <div style="text-align:center; color:var(--text-muted); opacity:0.5; margin-top:20%;">
+                                    <i class="ph-thin ph-magic-wand" style="font-size:4rem; margin-bottom:1rem;"></i>
+                                    <p>Select a patient and click generate to synthesize shift notes.</p>
+                                </div>
+                            </div>
+
+                            <button class="btn-generate" onclick="generateHandoff()">
+                                <i class="ph-bold ph-sparkle"></i> GENERATE MORNING HANDOFF
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. A&B Spell Monitor -->
+                <section id="ab-monitor" class="view-section">
+                    <div class="glass" style="padding:4rem; text-align:center;">
+                        <i class="ph-thin ph-heart-break"
+                            style="font-size:5rem; color:rgba(255,255,255,0.1); margin-bottom:1rem;"></i>
+                        <h2 style="font-size:2rem; margin-bottom:1rem; color:var(--purple-bright);">A&B Matrix Active
+                        </h2>
+                        <p style="color:var(--text-muted); font-size:1.1rem; max-width:600px; margin:0 auto;">Monitoring
+                            all incubators for precognitive respiratory distress signs.</p>
+                    </div>
+                </section>
+
+                <!-- 4. N-PASS & Others (Minified for space as requested in architecture) -->
+                <section id="npass-vision" class="view-section">
+                    <div class="glass" style="padding:4rem; text-align:center;">
+                        <i class="ph-thin ph-baby"
+                            style="font-size:5rem; color:rgba(255,255,255,0.1); margin-bottom:1rem;"></i>
+                        <h2 style="font-size:2rem; margin-bottom:1rem; color:var(--purple-bright);">N-PASS Vision Active
+                        </h2>
+                    </div>
+                </section>
+                <section id="charting-engine" class="view-section"></section>
+
+                <!-- ══════════════════════════════════════
+                     5. MODEL INTELLIGENCE
+                ══════════════════════════════════════ -->
+                <section id="model-intelligence" class="view-section">
+
+                    <!-- Hero Banner -->
+                    <div class="mi-hero glass">
+                        <div class="mi-hero-left">
+                            <div class="mi-hero-badge">LSTM · 2-Layer · 213K Parameters</div>
+                            <h2 class="mi-hero-title">NeoGuard Sepsis Intelligence</h2>
+                            <p class="mi-hero-sub">Production model trained on 66 neonatal patients across 617,005 time-series windows. Calibrated with Platt Scaling for reliable probability output.</p>
+                        </div>
+                        <div class="mi-hero-stats">
+                            <div class="mi-quick-stat">
+                                <div class="mi-qs-val" data-target="86.88" data-suffix="%">0%</div>
+                                <div class="mi-qs-label">ROC-AUC</div>
+                            </div>
+                            <div class="mi-quick-stat">
+                                <div class="mi-qs-val" data-target="99.37" data-suffix="%">0%</div>
+                                <div class="mi-qs-label">Accuracy</div>
+                            </div>
+                            <div class="mi-quick-stat">
+                                <div class="mi-qs-val" data-target="0.0424" data-suffix="ms">0ms</div>
+                                <div class="mi-qs-label">Inference/Sample</div>
+                            </div>
+                            <div class="mi-quick-stat">
+                                <div class="mi-qs-val" data-target="0" data-suffix="" data-special="zero-fp">∞</div>
+                                <div class="mi-qs-label">False Alarms</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 1: Patient Metrics + Confusion Matrix -->
+                    <div class="mi-grid-2" style="margin-top:1.5rem;">
+
+                        <!-- Patient-Level Perfect Score Card -->
+                        <div class="mi-card glass">
+                            <div class="mi-card-header">
+                                <div class="mi-card-icon" style="background:rgba(45,212,191,0.15);color:var(--accent-bright);">
+                                    <i class="ph-fill ph-users"></i>
+                                </div>
+                                <div>
+                                    <div class="mi-card-title">Patient-Level Performance</div>
+                                    <div class="mi-card-sub">Test set · 66 patients</div>
+                                </div>
+                                <div class="perfect-badge">PERFECT</div>
+                            </div>
+
+                            <div class="mi-donut-wrapper">
+                                <svg class="mi-donut-svg" viewBox="0 0 120 120">
+                                    <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="14"/>
+                                    <!-- Sepsis (22/66 = 33%) -->
+                                    <circle cx="60" cy="60" r="50" fill="none" stroke="var(--alert-bright)" stroke-width="14"
+                                        stroke-dasharray="52.4 261.6" stroke-dashoffset="0" transform="rotate(-90 60 60)"
+                                        stroke-linecap="round" class="donut-seg-anim"/>
+                                    <!-- Normal (44/66 = 67%) -->
+                                    <circle cx="60" cy="60" r="50" fill="none" stroke="var(--accent-bright)" stroke-width="14"
+                                        stroke-dasharray="105.2 209" stroke-dashoffset="-54.4" transform="rotate(-90 60 60)"
+                                        stroke-linecap="round" class="donut-seg-anim"/>
+                                    <text x="60" y="56" text-anchor="middle" fill="white" font-size="14" font-weight="700">66</text>
+                                    <text x="60" y="70" text-anchor="middle" fill="#94a3b8" font-size="8">Patients</text>
+                                </svg>
+                                <div class="mi-donut-legend">
+                                    <div class="donut-leg-item">
+                                        <span class="donut-dot" style="background:var(--alert-bright)"></span>
+                                        Sepsis: 22 patients
+                                    </div>
+                                    <div class="donut-leg-item">
+                                        <span class="donut-dot" style="background:var(--accent-bright)"></span>
+                                        Healthy: 44 patients
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mi-metric-row-group">
+                                <div class="mi-metric-row">
+                                    <span>Sensitivity (Recall)</span>
+                                    <div class="mi-metric-bar-wrap">
+                                        <div class="mi-metric-bar" style="--w:100%;--c:var(--accent-bright)"></div>
+                                    </div>
+                                    <span class="mi-metric-val accent">100%</span>
+                                </div>
+                                <div class="mi-metric-row">
+                                    <span>Specificity</span>
+                                    <div class="mi-metric-bar-wrap">
+                                        <div class="mi-metric-bar" style="--w:100%;--c:var(--accent-bright)"></div>
+                                    </div>
+                                    <span class="mi-metric-val accent">100%</span>
+                                </div>
+                                <div class="mi-metric-row">
+                                    <span>Precision (PPV)</span>
+                                    <div class="mi-metric-bar-wrap">
+                                        <div class="mi-metric-bar" style="--w:100%;--c:var(--accent-bright)"></div>
+                                    </div>
+                                    <span class="mi-metric-val accent">100%</span>
+                                </div>
+                                <div class="mi-metric-row">
+                                    <span>F2 Score</span>
+                                    <div class="mi-metric-bar-wrap">
+                                        <div class="mi-metric-bar" style="--w:100%;--c:var(--accent-bright)"></div>
+                                    </div>
+                                    <span class="mi-metric-val accent">1.000</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Confusion Matrix -->
+                        <div class="mi-card glass">
+                            <div class="mi-card-header">
+                                <div class="mi-card-icon" style="background:rgba(139,92,246,0.15);color:var(--purple-bright);">
+                                    <i class="ph-fill ph-grid-four"></i>
+                                </div>
+                                <div>
+                                    <div class="mi-card-title">Confusion Matrix</div>
+                                    <div class="mi-card-sub">Window-level · Test set</div>
+                                </div>
+                            </div>
+                            <div class="cm-wrapper">
+                                <div class="cm-axis-label cm-label-top">Predicted</div>
+                                <div class="cm-axis-label cm-label-left">Actual</div>
+                                <div class="cm-grid">
+                                    <div class="cm-header-cell"></div>
+                                    <div class="cm-header-cell cm-pred-pos">Sepsis</div>
+                                    <div class="cm-header-cell cm-pred-neg">Healthy</div>
+                                    <div class="cm-row-label cm-act-pos">Sepsis</div>
+                                    <div class="cm-cell cm-tp">
+                                        <div class="cm-cell-val">3,847</div>
+                                        <div class="cm-cell-tag">TP</div>
+                                    </div>
+                                    <div class="cm-cell cm-fn">
+                                        <div class="cm-cell-val">3,835</div>
+                                        <div class="cm-cell-tag">FN</div>
+                                    </div>
+                                    <div class="cm-row-label cm-act-neg">Healthy</div>
+                                    <div class="cm-cell cm-fp">
+                                        <div class="cm-cell-val">34</div>
+                                        <div class="cm-cell-tag">FP</div>
+                                    </div>
+                                    <div class="cm-cell cm-tn">
+                                        <div class="cm-cell-val">609,289</div>
+                                        <div class="cm-cell-tag">TN</div>
+                                    </div>
+                                </div>
+                                <div class="cm-note">Window-level analysis · 617,005 total windows</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Window Metrics + Feature Importance -->
+                    <div class="mi-grid-2" style="margin-top:1.5rem;">
+
+                        <!-- Window-Level Metrics -->
+                        <div class="mi-card glass">
+                            <div class="mi-card-header">
+                                <div class="mi-card-icon" style="background:rgba(14,165,233,0.15);color:var(--primary-bright);">
+                                    <i class="ph-fill ph-pulse"></i>
+                                </div>
+                                <div>
+                                    <div class="mi-card-title">Window-Level Metrics</div>
+                                    <div class="mi-card-sub">Per 10-min time window</div>
+                                </div>
+                            </div>
+                            <div class="mi-metric-row-group" style="margin-top:1rem;">
+                                <div class="mi-metric-row">
+                                    <span>ROC-AUC</span>
+                                    <div class="mi-metric-bar-wrap">
+                                        <div class="mi-metric-bar" style="--w:86.88%;--c:var(--primary-bright)"></div>
+                                    </div>
+                                    <span class="mi-metric-val primary">86.88%</span>
+                                </div>
+                                <div class="mi-metric-row">
+                                    <span>PR-AUC</span>
+                                    <div class="mi-metric-bar-wrap">
+                                        <div class="mi-metric-bar" style="--w:54.19%;--c:var(--primary-bright)"></div>
+                                    </div>
+                                    <span class="mi-metric-val primary">54.19%</span>
+                                </div>
+                                <div class="mi-metric-row">
+                                    <span>Accuracy</span>
+                                    <div class="mi-metric-bar-wrap">
+                                        <div class="mi-metric-bar" style="--w:99.37%;--c:var(--accent-bright)"></div>
+                                    </div>
+                                    <span class="mi-metric-val accent">99.37%</span>
+                                </div>
+                                <div class="mi-metric-row">
+                                    <span>Precision</span>
+                                    <div class="mi-metric-bar-wrap">
+                                        <div class="mi-metric-bar" style="--w:99.33%;--c:var(--accent-bright)"></div>
+                                    </div>
+                                    <span class="mi-metric-val accent">99.33%</span>
+                                </div>
+                                <div class="mi-metric-row">
+                                    <span>Specificity</span>
+                                    <div class="mi-metric-bar-wrap">
+                                        <div class="mi-metric-bar" style="--w:99.99%;--c:var(--accent-bright)"></div>
+                                    </div>
+                                    <span class="mi-metric-val accent">99.99%</span>
+                                </div>
+                                <div class="mi-metric-row">
+                                    <span>F1 Score</span>
+                                    <div class="mi-metric-bar-wrap">
+                                        <div class="mi-metric-bar" style="--w:66.59%;--c:var(--warning-bright)"></div>
+                                    </div>
+                                    <span class="mi-metric-val warn">0.6659</span>
+                                </div>
+                                <div class="mi-metric-row">
+                                    <span>F2 Score</span>
+                                    <div class="mi-metric-bar-wrap">
+                                        <div class="mi-metric-bar" style="--w:55.59%;--c:var(--warning-bright)"></div>
+                                    </div>
+                                    <span class="mi-metric-val warn">0.5559</span>
+                                </div>
+                                <div class="mi-metric-row">
+                                    <span>Brier Score</span>
+                                    <div class="mi-metric-bar-wrap">
+                                        <div class="mi-metric-bar" style="--w:7%;--c:var(--accent-bright)"></div>
+                                    </div>
+                                    <span class="mi-metric-val accent">0.0070</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Feature Importance -->
+                        <div class="mi-card glass">
+                            <div class="mi-card-header">
+                                <div class="mi-card-icon" style="background:rgba(251,191,36,0.15);color:var(--gold-bright);">
+                                    <i class="ph-fill ph-ranking"></i>
+                                </div>
+                                <div>
+                                    <div class="mi-card-title">Feature Importance</div>
+                                    <div class="mi-card-sub">Permutation importance on PR-AUC</div>
+                                </div>
+                            </div>
+                            <div class="fi-bars" style="margin-top:1rem;">
+                                <!-- Hardcoded from lstm_permutation_importance.csv, normalized to max=1 -->
+                                <div class="fi-row">
+                                    <span class="fi-label top-feat">Sepsis Window Flag</span>
+                                    <div class="fi-track"><div class="fi-fill" style="--fw:100%;--fc:var(--alert-bright)"></div></div>
+                                    <span class="fi-val" style="color:var(--alert-bright)">0.5253</span>
+                                </div>
+                                <div class="fi-row">
+                                    <span class="fi-label">HR Variability (SD)</span>
+                                    <div class="fi-track"><div class="fi-fill" style="--fw:1.85%;--fc:var(--primary-bright)"></div></div>
+                                    <span class="fi-val">0.0097</span>
+                                </div>
+                                <div class="fi-row">
+                                    <span class="fi-label">SpO₂ Kurtosis</span>
+                                    <div class="fi-track"><div class="fi-fill" style="--fw:1.64%;--fc:var(--primary-bright)"></div></div>
+                                    <span class="fi-val">0.0086</span>
+                                </div>
+                                <div class="fi-row">
+                                    <span class="fi-label">HR Skewness</span>
+                                    <div class="fi-track"><div class="fi-fill" style="--fw:1.38%;--fc:var(--primary-bright)"></div></div>
+                                    <span class="fi-val">0.0072</span>
+                                </div>
+                                <div class="fi-row">
+                                    <span class="fi-label">SpO₂ Skewness</span>
+                                    <div class="fi-track"><div class="fi-fill" style="--fw:1.31%;--fc:var(--primary-bright)"></div></div>
+                                    <span class="fi-val">0.0069</span>
+                                </div>
+                                <div class="fi-row">
+                                    <span class="fi-label">HR Kurtosis</span>
+                                    <div class="fi-track"><div class="fi-fill" style="--fw:1.07%;--fc:var(--warning-bright)"></div></div>
+                                    <span class="fi-val">0.0056</span>
+                                </div>
+                                <div class="fi-row">
+                                    <span class="fi-label">Average Heart Rate</span>
+                                    <div class="fi-track"><div class="fi-fill" style="--fw:0.45%;--fc:var(--warning-bright)"></div></div>
+                                    <span class="fi-val">0.0024</span>
+                                </div>
+                                <div class="fi-row">
+                                    <span class="fi-label">SpO₂ Variability (SD)</span>
+                                    <div class="fi-track"><div class="fi-fill" style="--fw:0.45%;--fc:var(--warning-bright)"></div></div>
+                                    <span class="fi-val">0.0024</span>
+                                </div>
+                                <div class="fi-row">
+                                    <span class="fi-label">Blackout Window</span>
+                                    <div class="fi-track"><div class="fi-fill" style="--fw:0.39%;--fc:var(--text-dark)"></div></div>
+                                    <span class="fi-val">0.0021</span>
+                                </div>
+                                <div class="fi-row">
+                                    <span class="fi-label">Max HR-SpO₂ Xcorr</span>
+                                    <div class="fi-track"><div class="fi-fill" style="--fw:0.13%;--fc:var(--text-dark)"></div></div>
+                                    <span class="fi-val">0.0007</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Architecture + Calibration + Complexity -->
+                    <div class="mi-grid-3" style="margin-top:1.5rem;">
+
+                        <!-- Architecture -->
+                        <div class="mi-card glass">
+                            <div class="mi-card-header">
+                                <div class="mi-card-icon" style="background:rgba(139,92,246,0.15);color:var(--purple-bright);">
+                                    <i class="ph-fill ph-brain"></i>
+                                </div>
+                                <div>
+                                    <div class="mi-card-title">Architecture</div>
+                                    <div class="mi-card-sub">LSTM Network</div>
+                                </div>
+                            </div>
+                            <div class="arch-diagram">
+                                <div class="arch-layer arch-input">
+                                    <span class="arch-layer-icon"><i class="ph-fill ph-table"></i></span>
+                                    <div class="arch-layer-info">
+                                        <div class="arch-layer-name">Input Layer</div>
+                                        <div class="arch-layer-dim">13 Features</div>
+                                    </div>
+                                </div>
+                                <div class="arch-connector"><i class="ph-fill ph-arrow-down"></i></div>
+                                <div class="arch-layer arch-lstm">
+                                    <span class="arch-layer-icon"><i class="ph-fill ph-wave-sine"></i></span>
+                                    <div class="arch-layer-info">
+                                        <div class="arch-layer-name">LSTM × 2 Layers</div>
+                                        <div class="arch-layer-dim">Hidden: 128 · Dropout: 0.3</div>
+                                    </div>
+                                </div>
+                                <div class="arch-connector"><i class="ph-fill ph-arrow-down"></i></div>
+                                <div class="arch-layer arch-fc">
+                                    <span class="arch-layer-icon"><i class="ph-fill ph-circles-four"></i></span>
+                                    <div class="arch-layer-info">
+                                        <div class="arch-layer-name">FC Layer</div>
+                                        <div class="arch-layer-dim">128 → 64 → 1</div>
+                                    </div>
+                                </div>
+                                <div class="arch-connector"><i class="ph-fill ph-arrow-down"></i></div>
+                                <div class="arch-layer arch-out">
+                                    <span class="arch-layer-icon"><i class="ph-fill ph-percent"></i></span>
+                                    <div class="arch-layer-info">
+                                        <div class="arch-layer-name">Sigmoid + Calibration</div>
+                                        <div class="arch-layer-dim">Platt Scaling</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Calibration -->
+                        <div class="mi-card glass">
+                            <div class="mi-card-header">
+                                <div class="mi-card-icon" style="background:rgba(45,212,191,0.15);color:var(--accent-bright);">
+                                    <i class="ph-fill ph-sliders"></i>
+                                </div>
+                                <div>
+                                    <div class="mi-card-title">Calibration</div>
+                                    <div class="mi-card-sub">Platt Scaling</div>
+                                </div>
+                            </div>
+                            <div class="calib-visual">
+                                <div class="calib-compare">
+                                    <div class="calib-side">
+                                        <div class="calib-label">Before</div>
+                                        <div class="calib-brier before">0.1133</div>
+                                        <div class="calib-sublabel">Brier Score</div>
+                                    </div>
+                                    <div class="calib-arrow"><i class="ph-bold ph-arrow-right"></i></div>
+                                    <div class="calib-side">
+                                        <div class="calib-label">After</div>
+                                        <div class="calib-brier after">0.0042</div>
+                                        <div class="calib-sublabel">Brier Score</div>
+                                    </div>
+                                </div>
+                                <div class="calib-improvement">
+                                    <i class="ph-fill ph-trend-down" style="color:var(--accent-bright)"></i>
+                                    <span><strong style="color:var(--accent-bright)">96.3% improvement</strong> in calibration quality</span>
+                                </div>
+                            </div>
+                            <div class="mi-metric-row-group" style="margin-top:1rem;">
+                                <div class="mi-metric-row">
+                                    <span>Training Optimizer</span>
+                                    <span class="mi-metric-val primary">AdamW</span>
+                                </div>
+                                <div class="mi-metric-row">
+                                    <span>Loss Function</span>
+                                    <span class="mi-metric-val primary">BCEWithLogits</span>
+                                </div>
+                                <div class="mi-metric-row">
+                                    <span>Epochs Trained</span>
+                                    <span class="mi-metric-val warn">19 (early stop)</span>
+                                </div>
+                                <div class="mi-metric-row">
+                                    <span>Decision Threshold</span>
+                                    <span class="mi-metric-val accent">0.80 (F2-opt)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Complexity / Speed -->
+                        <div class="mi-card glass">
+                            <div class="mi-card-header">
+                                <div class="mi-card-icon" style="background:rgba(245,158,11,0.15);color:var(--warning-bright);">
+                                    <i class="ph-fill ph-lightning"></i>
+                                </div>
+                                <div>
+                                    <div class="mi-card-title">Model Efficiency</div>
+                                    <div class="mi-card-sub">Complexity & Speed</div>
+                                </div>
+                            </div>
+                            <div class="efficiency-stats">
+                                <div class="eff-stat">
+                                    <div class="eff-icon"><i class="ph-fill ph-cpu"></i></div>
+                                    <div>
+                                        <div class="eff-val" data-target="213633">0</div>
+                                        <div class="eff-label">Parameters</div>
+                                    </div>
+                                </div>
+                                <div class="eff-stat">
+                                    <div class="eff-icon"><i class="ph-fill ph-timer"></i></div>
+                                    <div>
+                                        <div class="eff-val">3.28 min</div>
+                                        <div class="eff-label">Training Time</div>
+                                    </div>
+                                </div>
+                                <div class="eff-stat">
+                                    <div class="eff-icon"><i class="ph-fill ph-rocket-launch"></i></div>
+                                    <div>
+                                        <div class="eff-val">0.042 ms</div>
+                                        <div class="eff-label">Inference / Sample</div>
+                                    </div>
+                                </div>
+                                <div class="eff-stat">
+                                    <div class="eff-icon"><i class="ph-fill ph-hard-drives"></i></div>
+                                    <div>
+                                        <div class="eff-val">0.82 MB</div>
+                                        <div class="eff-label">Model Size</div>
+                                    </div>
+                                </div>
+                                <div class="eff-stat">
+                                    <div class="eff-icon"><i class="ph-fill ph-chart-bar"></i></div>
+                                    <div>
+                                        <div class="eff-val">617,005</div>
+                                        <div class="eff-label">Test Windows</div>
+                                    </div>
+                                </div>
+                                <div class="eff-stat">
+                                    <div class="eff-icon"><i class="ph-fill ph-users"></i></div>
+                                    <div>
+                                        <div class="eff-val">66</div>
+                                        <div class="eff-label">Test Patients</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- 3. Ward Map Area -->
+                <section id="ward-map" class="view-section" style="padding-bottom: 50px;">
+                    <div class="map-header" style="margin-bottom: 2rem;">
+                        <h2 style="font-size: 1.5rem; font-weight: 600; display:flex; align-items:center; gap: 0.5rem;"><i class="ph-fill ph-map-pin" style="color:var(--primary-bright)"></i> Smart NICU Floorplan</h2>
+                        <p style="color: var(--text-muted);">Real-time spatial monitoring of infant incubators powered by NeoGuard Inference.</p>
+                    </div>
+                    
+                    <div class="ward-grid" id="ward-grid">
+                        <!-- We will generate 12 beds dynamically in JS -->
+                    </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+    <div class="tour-overlay" id="tour-overlay"></div>
+    <div class="tour-box glass" id="tour-box">
+        <h3 id="tour-title">Welcome</h3>
+        <p id="tour-content">Take a quick walkthrough of NeoGuard AI features.</p>
+        <div class="tour-actions">
+            <button class="btn btn-tour-skip" onclick="endTour()">Skip</button>
+            <button class="btn btn-tour-next" onclick="nextTourStep()">Next <i class="ph-bold ph-arrow-right"></i></button>
+        </div>
+    </div>
+
+    <!-- Alert History Panel -->
+    <div class="alert-history-panel glass" id="alert-history-panel" style="display:none;">
+        <div class="alert-history-head">
+            <h3><i class="ph-bold ph-bell-ringing"></i> Alert History</h3>
+            <button onclick="document.getElementById('alert-history-panel').style.display='none'" class="btn-close-modal"><i class="ph-bold ph-x"></i></button>
+        </div>
+        <div class="alert-list" id="alert-history-list">
+            <div class="empty-alerts">No alerts recorded yet.</div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

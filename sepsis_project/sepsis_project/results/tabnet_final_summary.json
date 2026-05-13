@@ -1,0 +1,77 @@
+{
+    "model": "TabNet",
+    "features": [
+        "mean_hr",
+        "mean_spo2",
+        "sd_hr",
+        "sd_spo2",
+        "skewness_hr",
+        "skewness_spo2",
+        "kurtosis_hr",
+        "kurtosis_spo2",
+        "max_xc_hr_spo2",
+        "min_xc_hr_spo2",
+        "sub",
+        "sepsis_window",
+        "blackout_window"
+    ],
+    "architecture": {
+        "n_d": 32,
+        "n_a": 32,
+        "n_steps": 5,
+        "gamma": 1.5,
+        "mask_type": "sparsemax",
+        "total_params": 116630,
+        "trainable_params": 116630
+    },
+    "training": {
+        "optimizer": "AdamW",
+        "loss": "BCEWithLogitsLoss",
+        "scheduler": "ReduceLROnPlateau",
+        "early_stopping": "patience=10",
+        "training_time_min": 31.64
+    },
+    "calibration": {
+        "method": "Platt Scaling",
+        "brier_before": 0.12824435532093048,
+        "brier_after": 0.00477359469794523
+    },
+    "threshold": {
+        "value": 0.423,
+        "metric": "F2-score",
+        "f2_value": 0.5686154785528927
+    },
+    "window_metrics": {
+        "accuracy": 0.9936126935762271,
+        "precision": 0.9794924378364522,
+        "recall": 0.49739651132517576,
+        "specificity": 0.9998687067450268,
+        "f1": 0.6597599930933264,
+        "f2": 0.5517052181697422,
+        "ppv": 0.9794924378364522,
+        "npv": 0.993702536600642,
+        "roc_auc": 0.8568045384694223,
+        "pr_auc": 0.5327301158960936,
+        "brier": 0.007873593220685126,
+        "tp": 3821,
+        "tn": 609243,
+        "fp": 80,
+        "fn": 3861
+    },
+    "patient_metrics": {
+        "total": 66,
+        "sepsis": 22,
+        "normal": 44,
+        "detected": 22,
+        "missed": 0,
+        "false_alarm": 10
+    },
+    "complexity": {
+        "total_params": 116630,
+        "training_min": 31.64,
+        "inference_sec": 118.29,
+        "per_sample_ms": 0.1917,
+        "model_size_mb": 0.45,
+        "scaler_size_kb": 0.86
+    }
+}
