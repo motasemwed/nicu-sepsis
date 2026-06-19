@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         /* === REAL BACKEND INTEGRATION === */
-        const API_URL = 'http://127.0.0.1:8000';
+        const API_URL = 'https://nicu-sepsis.onrender.com';
 
         async function runPredictionPipeline(file) {
             // Show processing UI
@@ -799,7 +799,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reqFeatures['mean_spo2'] = spo2;
 
         twinTimer = setTimeout(() => {
-            fetch('http://127.0.0.1:8000/simulate_twin', {
+            fetch('https://nicu-sepsis.onrender.com/simulate_twin', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ features: reqFeatures })
